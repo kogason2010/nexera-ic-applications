@@ -15,6 +15,8 @@ import {
   hydratedPotassium,
   hydratedSodium,
   hydratedSulfate,
+  hydratedBromide,
+  hydratePolyatomic,
   calcium,
   lithium,
   magnesium,
@@ -42,25 +44,51 @@ export interface SceneItem {
 export interface Scene {
   id: SceneId;
   items: SceneItem[];
+  /** draw a directional path through the items in order (elution sequence) */
+  path?: boolean;
+  /** atlas: highlight the ion and dim its hydration water */
+  focus?: boolean;
+  /** atlas: fixed physical scale so every ion is framed at the same magnification */
+  refRadius?: number;
   /** group labels not tied to one molecule */
   tags?: { text: string; sub?: string; pos: [number, number, number] }[];
 }
 
-/** Molecule used when an ion is shown on its own (hydrated where a shell is modelled). */
-export const FOCUS_MOLECULE: Record<string, () => Molecule> = {
-  F: hydratedFluoride,
-  Cl: hydratedChloride,
+/** Bare ion used for the atlas "Ion only" view. */
+export const BARE_MOLECULE: Record<string, () => Molecule> = {
+  F: fluoride,
+  Cl: chloride,
   NO2: nitrite,
   Br: bromide,
   NO3: nitrate,
   PO4: phosphate,
-  SO4: hydratedSulfate,
+  SO4: sulfate,
   ClO2: chlorite,
   BrO3: bromate,
   ClO3: chlorate,
+  Li: lithium,
+  Na: sodium,
+  NH4: ammoniumIon,
+  K: potassium,
+  Mg: magnesium,
+  Ca: calcium,
+};
+
+/** Same ion with an illustrative first shell of water ("Show hydration"). */
+export const HYDRATED_MOLECULE: Record<string, () => Molecule> = {
+  F: hydratedFluoride,
+  Cl: hydratedChloride,
+  NO2: () => hydratePolyatomic(nitrite()),
+  Br: hydratedBromide,
+  NO3: () => hydratePolyatomic(nitrate()),
+  PO4: () => hydratePolyatomic(phosphate()),
+  SO4: hydratedSulfate,
+  ClO2: () => hydratePolyatomic(chlorite()),
+  BrO3: () => hydratePolyatomic(bromate()),
+  ClO3: () => hydratePolyatomic(chlorate()),
   Li: hydratedLithium,
   Na: hydratedSodium,
-  NH4: ammoniumIon,
+  NH4: () => hydratePolyatomic(ammoniumIon()),
   K: hydratedPotassium,
   Mg: hydratedMagnesium,
   Ca: hydratedCalcium,
@@ -71,7 +99,7 @@ const ring = (n: number, r: number, i: number, start = Math.PI / 2): [number, nu
   return [Math.cos(a) * r, Math.sin(a) * r * 0.86, Math.sin(a * 2) * 0.6];
 };
 
-export function buildScene(id: SceneId, ion = 'SO4'): Scene {
+export function buildScene(id: SceneId, ion = 'SO4', hydrated = false): Scene {
   switch (id) {
     case 'hero':
       return {
@@ -94,7 +122,8 @@ export function buildScene(id: SceneId, ion = 'SO4'): Scene {
       ];
       return {
         id,
-        items: list.map(([mol, label, sub], i) => ({ mol, pos: ring(7, 5.8, i), scale: 1.0, spin: 0.25 + i * 0.03, tilt: 0.3, label, sub })),
+        path: true,
+        items: list.map(([mol, label, sub], i) => ({ mol, pos: ring(7, 5.8, i), scale: 1.0, spin: 0.25 + i * 0.03, tilt: 0.3, label: `${i + 1} · ${label}`, sub })),
       };
     }
     case 'partB': {
@@ -150,7 +179,12 @@ export function buildScene(id: SceneId, ion = 'SO4'): Scene {
         ],
       };
     case 'atlas':
-      return { id, items: [{ mol: (FOCUS_MOLECULE[ion] ?? hydratedSulfate)(), pos: [0, 0, 0], scale: 1.35, spin: 0.2, tilt: -0.2 }] };
+      return {
+        id,
+        focus: true,
+        refRadius: hydrated ? 5.4 : 3.0,
+        items: [{ mol: ((hydrated ? HYDRATED_MOLECULE : BARE_MOLECULE)[ion] ?? sulfate)(), pos: [0, 0, 0], scale: 1, spin: 0.2, tilt: -0.2 }],
+      };
     case 'outro': {
       const all = [fluoride, chloride, nitrite, bromide, nitrate, phosphate, sulfate, chlorite, bromate, chlorate, lithium, sodium, ammoniumIon, potassium, magnesium, calcium];
       return {

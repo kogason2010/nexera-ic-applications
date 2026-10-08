@@ -55,55 +55,57 @@ export interface IonRecord {
 const a = (id: string) => EPA_A.peaks.find((p) => p.id === id)!;
 const c = (id: string) => CATIONS.peaks.find((p) => p.id === id)!;
 const b = (id: string) => PART_B_PEAKS.find((p) => p.id === id)!;
+/** Part A MDLs are published in mg/L; shown in µg/L so all methods compare directly. */
+const ug = (mgL: number) => Number((mgL * 1000).toFixed(2));
 
 export const IONS: IonRecord[] = [
   {
     id: 'F', formula: 'F⁻', name: 'Fluoride', kind: 'anion', charge: '−1', shape: 'Monatomic; small and strongly hydrated', color: ANION_A_COLORS[0],
-    methods: [{ method: 'EPA 300.1 Part A', tR: `${a('F').tR} min`, mdl: `${a('F').mdl} mg/L` }],
+    methods: [{ method: 'EPA 300.1 Part A', tR: `${a('F').tR} min`, mdl: `${ug(a('F').mdl)} µg/L` }],
     note: 'Small, hard and heavily hydrated, fluoride is held least by the anion-exchange resin and elutes first.',
   },
   {
     id: 'Cl', formula: 'Cl⁻', name: 'Chloride', kind: 'anion', charge: '−1', shape: 'Monatomic; Cl···O to water ≈ 3.2 Å', color: ANION_A_COLORS[1],
-    methods: [{ method: 'EPA 300.1 Part A', tR: `${a('Cl').tR} min`, mdl: `${a('Cl').mdl} mg/L` }],
+    methods: [{ method: 'EPA 300.1 Part A', tR: `${a('Cl').tR} min`, mdl: `${ug(a('Cl').mdl)} µg/L` }],
     note: 'Usually the largest peak in drinking water; in the application note it runs off-scale at 10 mg/L.',
   },
   {
     id: 'NO2', formula: 'NO₂⁻', name: 'Nitrite', kind: 'anion', charge: '−1', shape: 'Bent; N–O 1.24 Å, 115°', color: ANION_A_COLORS[2],
-    methods: [{ method: 'EPA 300.1 Part A', tR: `${a('NO2').tR} min`, mdl: `${a('NO2').mdl} mg/L (as N)` }],
+    methods: [{ method: 'EPA 300.1 Part A', tR: `${a('NO2').tR} min`, mdl: `${ug(a('NO2').mdl)} µg/L (as N)` }],
     note: 'Reported as nitrite-N. It also absorbs UV, which is why an optional UV detector can be added.',
   },
   {
     id: 'Br', formula: 'Br⁻', name: 'Bromide', kind: 'anion', charge: '−1', shape: 'Monatomic; large and polarisable', color: ANION_A_COLORS[3],
     methods: [
-      { method: 'EPA 300.1 Part A', tR: `${a('Br').tR} min`, mdl: `${a('Br').mdl} mg/L` },
+      { method: 'EPA 300.1 Part A', tR: `${a('Br').tR} min`, mdl: `${ug(a('Br').mdl)} µg/L` },
       { method: 'EPA 300.1 Part B', tR: `≈ ${b('Br').tR} min`, mdl: `${b('Br').mdl} µg/L` },
     ],
-    note: 'Measured in both parts of EPA 300.1: as a common anion, and as the precursor of bromate during disinfection.',
+    note: 'Measured in both parts of EPA 300.1: as a common anion, and because bromide can serve as a precursor to bromate, particularly during ozonation.',
   },
   {
     id: 'NO3', formula: 'NO₃⁻', name: 'Nitrate', kind: 'anion', charge: '−1', shape: 'Trigonal planar; N–O 1.25 Å', color: ANION_A_COLORS[4],
-    methods: [{ method: 'EPA 300.1 Part A', tR: `${a('NO3').tR} min`, mdl: `${a('NO3').mdl} mg/L (as N)` }],
+    methods: [{ method: 'EPA 300.1 Part A', tR: `${a('NO3').tR} min`, mdl: `${ug(a('NO3').mdl)} µg/L (as N)` }],
     note: 'Flat and polarisable, nitrate is held longer than chloride despite carrying the same single charge.',
   },
   {
     id: 'PO4', formula: 'PO₄³⁻', name: 'Phosphate', kind: 'anion', charge: '−3 (fully deprotonated)', shape: 'Tetrahedral; P–O 1.54 Å', color: ANION_A_COLORS[5],
-    methods: [{ method: 'EPA 300.1 Part A', tR: `${a('PO4').tR} min`, mdl: `${a('PO4').mdl} mg/L (as P)` }],
+    methods: [{ method: 'EPA 300.1 Part A', tR: `${a('PO4').tR} min`, mdl: `${ug(a('PO4').mdl)} µg/L (as P)` }],
     note: 'Reported as phosphate-P. Its retention is especially sensitive to eluent strength.',
   },
   {
     id: 'SO4', formula: 'SO₄²⁻', name: 'Sulfate', kind: 'anion', charge: '−2', shape: 'Tetrahedral; S–O 1.49 Å', color: ANION_A_COLORS[6],
-    methods: [{ method: 'EPA 300.1 Part A', tR: `${a('SO4').tR} min`, mdl: `${a('SO4').mdl} mg/L` }],
+    methods: [{ method: 'EPA 300.1 Part A', tR: `${a('SO4').tR} min`, mdl: `${ug(a('SO4').mdl)} µg/L` }],
     note: 'Divalent, so it is held more strongly than the monovalent anions and elutes last in Part A.',
   },
   {
     id: 'ClO2', formula: 'ClO₂⁻', name: 'Chlorite', kind: 'anion', charge: '−1', shape: 'Bent; Cl–O 1.56 Å, 111°', color: DBP_COLORS[0],
     methods: [{ method: 'EPA 300.1 Part B', tR: `≈ ${b('ClO2').tR} min`, mdl: `${b('ClO2').mdl} µg/L` }],
-    note: 'A disinfection by-product. The application note compares its MDL with the 1.0 mg/L maximum contaminant level.',
+    note: 'A disinfection by-product. The application note compares its MDL with the 1.0 mg/L (1,000 µg/L) maximum contaminant level.',
   },
   {
     id: 'BrO3', formula: 'BrO₃⁻', name: 'Bromate', kind: 'anion', charge: '−1', shape: 'Trigonal pyramidal; Br–O 1.65 Å, 104°', color: DBP_COLORS[1],
     methods: [{ method: 'EPA 300.1 Part B', tR: `≈ ${b('BrO3').tR} min`, mdl: `${b('BrO3').mdl} µg/L` }],
-    note: 'Formed from bromide during disinfection. Its MCL is 0.010 mg/L, so the 0.6 µg/L MDL leaves wide margin.',
+    note: 'Can form from bromide during disinfection, particularly ozonation. Its MCL is 0.010 mg/L (10 µg/L), so the 0.6 µg/L MDL leaves wide margin.',
   },
   {
     id: 'ClO3', formula: 'ClO₃⁻', name: 'Chlorate', kind: 'anion', charge: '−1', shape: 'Trigonal pyramidal; Cl–O 1.49 Å, 107°', color: DBP_COLORS[3],
@@ -154,7 +156,7 @@ export const METHODS = [
     injection: '50 µL',
     analytes: 'F⁻, Cl⁻, NO₂⁻, Br⁻, NO₃⁻, PO₄³⁻, SO₄²⁻',
     run: 'under 20 min',
-    mdl: '0.0004–0.003 mg/L',
+    mdl: '0.4–3 µg/L (published as 0.0004–0.003 mg/L)',
     qc: `r² ≥ 0.9995 · CCV ${EPA_A.recovery} over ~${EPA_A.hours} h`,
     source: SOURCES.partA,
   },

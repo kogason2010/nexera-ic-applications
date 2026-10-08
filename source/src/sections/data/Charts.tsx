@@ -6,7 +6,8 @@ import { gaussian, toPath } from '../../utils/math';
 const AX = 'rgba(170,195,225,0.28)';
 const GRID = 'rgba(170,195,225,0.07)';
 const TXT = '#b8c3d1';
-const FONT = { fontFamily: 'IBM Plex Mono, monospace', fontSize: 12, letterSpacing: '0.02em' };
+const FONT = { fontFamily: 'IBM Plex Mono, monospace', fontSize: 13, letterSpacing: '0.02em' };
+const FONT_W = { ...FONT, fontSize: 17 };
 
 interface Frame {
   w: number;
@@ -19,7 +20,7 @@ interface Frame {
 const sx = (f: Frame, v: number, min: number, max: number) => f.l + ((v - min) / (max - min)) * (f.w - f.l - f.r);
 const sy = (f: Frame, v: number, min: number, max: number) => f.h - f.b - ((v - min) / (max - min)) * (f.h - f.t - f.b);
 
-function Axes({ f, xt, yt, xmin, xmax, ymin, ymax, xl, yl }: {
+function Axes({ f, xt, yt, xmin, xmax, ymin, ymax, xl, yl, font = FONT }: {
   f: Frame;
   xt: number[];
   yt: number[];
@@ -29,9 +30,10 @@ function Axes({ f, xt, yt, xmin, xmax, ymin, ymax, xl, yl }: {
   ymax: number;
   xl: string;
   yl: string;
+  font?: typeof FONT;
 }) {
   return (
-    <g style={FONT}>
+    <g style={font}>
       {yt.map((v) => (
         <g key={`y${v}`}>
           <line x1={f.l} x2={f.w - f.r} y1={sy(f, v, ymin, ymax)} y2={sy(f, v, ymin, ymax)} stroke={GRID} />
@@ -58,7 +60,7 @@ function Axes({ f, xt, yt, xmin, xmax, ymin, ymax, xl, yl }: {
 
 /** Redrawn from Fig. 3 of the EPA 300.1 Part A application note (STD 3; DCA surrogate omitted). */
 export function AnionChromatogram() {
-  const f: Frame = { w: 760, h: 300, l: 40, r: 16, t: 34, b: 34 };
+  const f: Frame = { w: 760, h: 330, l: 44, r: 16, t: 48, b: 40 };
   const tmax = 20;
   const ymax = 7.5;
   const d = useMemo(() => {
@@ -74,31 +76,36 @@ export function AnionChromatogram() {
   }, []);
   return (
     <svg viewBox={`0 0 ${f.w} ${f.h}`} className="chart" role="img" aria-label="Chromatogram of seven anions per EPA 300.1 Part A: fluoride 4.5, chloride 7.7, nitrite 9.8, bromide 13.1, nitrate 15.8, phosphate 16.7 and sulfate 18.4 minutes.">
-      <Axes f={f} xt={[0, 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20]} yt={[0, 2, 4, 6]} xmin={0} xmax={tmax} ymin={-1.2} ymax={ymax} xl="min" yl="µS/cm" />
-      <path d={d} fill="none" stroke="#e6eef7" strokeWidth="1.3" data-draw />
-      {EPA_A.peaks.map((p, i) => (
-        <g key={p.id} style={FONT}>
-          <text x={sx(f, p.tR, 0, tmax)} y={sy(f, Math.min(p.h, 7.2), -1.2, ymax) - 10} textAnchor="middle" fill={ANION_COLORS[i]}>
-            {p.formula}
-          </text>
-        </g>
-      ))}
-      <text x={sx(f, 7.72, 0, tmax) + 10} y={f.t + 10} style={FONT} fill={TXT}>
-        Cl⁻ off-scale (10 mg/L)
+      <Axes f={f} xt={[0, 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20]} yt={[0, 2, 4, 6]} xmin={0} xmax={tmax} ymin={-1.2} ymax={ymax} xl="min" yl="µS/cm" font={FONT_W} />
+      <path d={d} fill="none" stroke="#e6eef7" strokeWidth="1.5" data-draw />
+      {EPA_A.peaks.map((p, i) => {
+        // numbered in elution order (matches the stage); close neighbours are staggered
+        const x = sx(f, p.tR, 0, tmax);
+        const y = sy(f, Math.min(p.h, 7.2), -1.2, ymax) - 12 - (i === 5 ? 24 : 0);
+        return (
+          <g key={p.id} style={{ ...FONT_W, fontWeight: 600 }}>
+            <text x={x} y={y} textAnchor="middle" fill={ANION_COLORS[i]} stroke="#080b10" strokeWidth="4" paintOrder="stroke">
+              {i + 1} {p.formula}
+            </text>
+          </g>
+        );
+      })}
+      <text x={sx(f, 7.72, 0, tmax) + 12} y={f.t + 34} style={{ ...FONT, fontSize: 14 }} fill={TXT}>
+        off-scale (10 mg/L)
       </text>
     </svg>
   );
 }
 
-/** Method detection limits, Part A (mg/L) on a log scale. */
+/** Method detection limits, Part A, converted to µg/L (published in mg/L) on a log scale. */
 export function MdlChart() {
   const f: Frame = { w: 380, h: 250, l: 54, r: 16, t: 26, b: 34 };
-  const lo = Math.log10(0.0002);
-  const hi = Math.log10(0.005);
+  const lo = Math.log10(0.2);
+  const hi = Math.log10(5);
   const bw = (f.w - f.l - f.r) / EPA_A.peaks.length;
   return (
-    <svg viewBox={`0 0 ${f.w} ${f.h}`} className="chart" role="img" aria-label="Method detection limits for EPA 300.1 Part A anions, from 0.0004 mg/L for nitrate to 0.003 mg/L for sulfate.">
-      {[0.0005, 0.001, 0.002, 0.005].map((v) => (
+    <svg viewBox={`0 0 ${f.w} ${f.h}`} className="chart" role="img" aria-label="Method detection limits for EPA 300.1 Part A anions, from 0.4 µg/L to 3 µg/L (0.0004 to 0.003 mg/L).">
+      {[0.5, 1, 2, 5].map((v) => (
         <g key={v} style={FONT}>
           <line x1={f.l} x2={f.w - f.r} y1={sy(f, Math.log10(v), lo, hi)} y2={sy(f, Math.log10(v), lo, hi)} stroke={GRID} />
           <text x={f.l - 8} y={sy(f, Math.log10(v), lo, hi) + 3} fill={TXT} textAnchor="end">
@@ -108,13 +115,17 @@ export function MdlChart() {
       ))}
       <line x1={f.l} x2={f.w - f.r} y1={f.h - f.b} y2={f.h - f.b} stroke={AX} />
       <text x={f.l} y={f.t - 10} style={FONT} fill={TXT}>
-        MDL (mg/L, log scale)
+        MDL (µg/L, log scale)
       </text>
       {EPA_A.peaks.map((p, i) => {
-        const y = sy(f, Math.log10(p.mdl), lo, hi);
+        const ug = Number((p.mdl * 1000).toFixed(2));
+        const y = sy(f, Math.log10(ug), lo, hi);
         return (
           <g key={p.id}>
             <rect x={f.l + i * bw + bw * 0.25} y={y} width={bw * 0.5} height={f.h - f.b - y} fill={ANION_COLORS[i]} opacity="0.85" data-grow />
+            <text x={f.l + i * bw + bw / 2} y={y - 5} style={{ ...FONT, fontSize: 11 }} fill="#e9eef4" textAnchor="middle">
+              {ug}
+            </text>
             <text x={f.l + i * bw + bw / 2} y={f.h - f.b + 16} style={FONT} fill={TXT} textAnchor="middle">
               {p.id}
             </text>

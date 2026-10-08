@@ -22,6 +22,8 @@ export interface Molecule {
   formula: string;
   atoms: Atom[];
   bonds: Bond[];
+  /** number of leading atoms that belong to the ion itself; the rest are hydration water */
+  core?: number;
 }
 
 export const ELEMENT_STYLE: Record<Element, { r: number; color: string }> = {
@@ -135,7 +137,7 @@ function hydratedCation(el: Element, n: 4 | 6, dist: number, name: string, formu
   m.atom(el, [0, 0, 0]);
   const dirs = n === 4 ? TET : OCT;
   dirs.forEach((d) => m.waterAway([d[0] * dist, d[1] * dist, d[2] * dist], d));
-  return { name, formula, atoms: m.atoms, bonds: m.bonds };
+  return { name, formula, atoms: m.atoms, bonds: m.bonds, core: 1 };
 }
 
 /** Anion with water hydrogens pointing toward it. */
@@ -146,7 +148,7 @@ function hydratedAnion(el: Element, dist: number, name: string, formula: string)
     const o: V3 = [d[0] * dist, d[1] * dist, d[2] * dist];
     m.water(o, [-d[0], -d[1], -d[2]]);
   });
-  return { name, formula, atoms: m.atoms, bonds: m.bonds };
+  return { name, formula, atoms: m.atoms, bonds: m.bonds, core: 1 };
 }
 
 function ammonium(): Molecule {
@@ -176,7 +178,7 @@ function tetra(center: Element, len: number, name: string, formula: string, hydr
       }
     });
   }
-  return { name, formula, atoms: m.atoms, bonds: m.bonds };
+  return { name, formula, atoms: m.atoms, bonds: m.bonds, core: 5 };
 }
 
 /** Trigonal planar XO3 (nitrate, carbonate). */
@@ -227,3 +229,32 @@ export const lithium = () => single('Li', 'Lithium', 'Li⁺');
 export const potassium = () => single('K', 'Potassium', 'K⁺');
 export const magnesium = () => single('Mg', 'Magnesium', 'Mg²⁺');
 export const calcium = () => single('Ca', 'Calcium', 'Ca²⁺');
+
+/**
+ * Illustrative hydration for polyatomic ions: two waters H-bonded to each oxygen of an oxyanion
+ * (O···O 2.8 Å, one O–H pointing at the ion), or one water accepting an H-bond from each N–H of
+ * ammonium (N···O 2.9 Å). Not a fixed structure or an exact water count.
+ */
+export function hydratePolyatomic(base: Molecule): Molecule {
+  const m = new Builder();
+  base.atoms.forEach((a) => m.atom(a.el, [...a.p] as V3));
+  base.bonds.forEach((b) => m.bond(b.a, b.b, b.order));
+  const c = base.atoms[0].p;
+  base.atoms.forEach((a, i) => {
+    if (i === 0) return;
+    const d = norm([a.p[0] - c[0], a.p[1] - c[1], a.p[2] - c[2]]);
+    const ref: V3 = Math.abs(d[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+    const u = norm(cross(d, ref));
+    if (a.el === 'O') {
+      for (const sgn of [1, -1]) {
+        const dir = norm(add(d, u, 0.75 * sgn));
+        const ow = add(a.p as V3, dir, 2.8);
+        m.water(ow, [a.p[0] - ow[0], a.p[1] - ow[1], a.p[2] - ow[2]]);
+      }
+    } else if (a.el === 'H') {
+      m.waterAway(add(c as V3, d, 2.9), d);
+    }
+  });
+  return { name: base.name + ', hydrated', formula: base.formula, atoms: m.atoms, bonds: m.bonds, core: base.atoms.length };
+}
+export const hydratedBromide = () => hydratedAnion('Br', 3.35, 'Bromide, hydrated', 'Br⁻');

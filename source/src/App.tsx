@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef } from 'react';
 import { Nav } from './components/Nav';
 import { ScrollControls } from './components/ScrollControls';
 import { useReducedMotion } from './hooks/useReducedMotion';
@@ -6,7 +6,7 @@ import { useSmoothScroll } from './hooks/useSmoothScroll';
 import { ScrollTrigger } from './utils/gsap';
 import { hasWebGL } from './utils/quality';
 import { pointer } from './utils/stage';
-import { DISCLAIMER, EPA_A, EPA_B, CATIONS, SUPPRESSION } from './data/nexera';
+import { EPA_A, EPA_B, CATIONS, SUPPRESSION } from './data/nexera';
 import { SOURCES } from './data/apps';
 import { Hero } from './sections/Hero';
 import { Chapter } from './sections/Chapter';
@@ -22,14 +22,42 @@ import './styles/apps.css';
 
 const IonStage = lazy(() => import('./three/IonStage'));
 
-function ChartCard({ cap, sub, children }: { cap: string; sub?: string; children: React.ReactNode }) {
+type ChartKind = 'redrawn' | 'replotted';
+const KIND_TEXT: Record<ChartKind, string> = {
+  redrawn: 'Redrawn from a published figure · illustrative, not measured here',
+  replotted: 'Published values, replotted',
+};
+
+function ChartCard({ cap, sub, kind, children }: { cap: string; sub?: string; kind: ChartKind; children: React.ReactNode }) {
+  const dlg = useRef<HTMLDialogElement>(null);
   return (
     <figure className="chart-card" data-reveal>
       <figcaption>
-        <span className="mono">{cap}</span>
-        {sub && <span className="mono chart-card__sub">{sub}</span>}
+        <span>
+          <span className="mono">{cap}</span>
+          <br />
+          <span className="mono chart-card__kind">{KIND_TEXT[kind]}</span>
+        </span>
+        <span className="chart-card__head">
+          {sub && <span className="mono chart-card__sub">{sub}</span>}
+          <button type="button" className="chart-card__expand" onClick={() => dlg.current?.showModal()} aria-label={`Expand chart: ${cap}`}>
+            ⤢ Expand
+          </button>
+        </span>
       </figcaption>
       {children}
+      <dialog ref={dlg} className="chart-dialog" aria-label={cap} onClick={(e) => e.target === dlg.current && dlg.current?.close()}>
+        <div className="chart-dialog__bar">
+          <div>
+            <p className="mono">{cap}{sub ? ` · ${sub}` : ''}</p>
+            <p className="mono chart-card__kind">{KIND_TEXT[kind]}</p>
+          </div>
+          <button type="button" className="chart-card__expand" onClick={() => dlg.current?.close()} autoFocus>
+            ✕ Close
+          </button>
+        </div>
+        {children}
+      </dialog>
     </figure>
   );
 }
@@ -69,10 +97,6 @@ export default function App() {
       </div>
       <Nav />
       <ScrollControls />
-      <p className="unofficial-ribbon mono" role="note">
-        Unofficial showcase · not affiliated with Shimadzu
-        <span className="sr-only">. {DISCLAIMER}</span>
-      </p>
       <main id="main">
         <Hero reducedMotion={reducedMotion} />
 
@@ -89,15 +113,15 @@ export default function App() {
           lede={
             <p>
               Fluoride to sulfate, the common anions regulated in drinking water separate on a Shim-pack IC-SA3 with
-              carbonate eluent and suppressed conductivity detection. On the stage they are arranged in elution order, each
-              with its published retention time.
+              carbonate eluent and suppressed conductivity detection. On the stage they are numbered 1 to 7 in elution
+              order, with an arrow tracing the sequence and each ion’s published retention time.
             </p>
           }
           facts={[
             ['Column', 'Shim-pack IC-SA3 + guard'],
             ['Eluent', '4.5 mmol/L Na₂CO₃, 0.85 mL/min, 40 °C'],
             ['Injection', '50 µL'],
-            ['MDLs', '0.0004–0.003 mg/L'],
+            ['MDLs', '0.4–3 µg/L (0.0004–0.003 mg/L)'],
             ['Linearity', 'r² ≥ 0.9995'],
             ['Stability', `CCV ${EPA_A.recovery} over ~${EPA_A.hours} h`],
           ]}
@@ -117,10 +141,10 @@ export default function App() {
               </li>
             </ul>
           </div>
-          <ChartCard cap="Standard chromatogram" sub="redrawn from the application note">
+          <ChartCard cap="Standard chromatogram" sub="after the application note" kind="redrawn">
             <AnionChromatogram />
           </ChartCard>
-          <ChartCard cap="Method detection limits" sub="n = 7, mg/L, log scale">
+          <ChartCard cap="Method detection limits" sub="n = 7, µg/L, log scale" kind="replotted">
             <MdlChart />
           </ChartCard>
         </Chapter>
@@ -137,8 +161,8 @@ export default function App() {
           }
           lede={
             <p>
-              Chlorite, bromate and chlorate can form when water is disinfected, and bromide is their precursor. Part B
-              measures them at µg/L levels, so the same column and eluent run with a four-times larger 200 µL injection.
+              Chlorite, bromate, and chlorate can form during water disinfection. Bromide can serve as a precursor to
+              bromate, particularly during ozonation. Part B measures them at µg/L levels, so the same column and eluent run with a four-times larger 200 µL injection.
             </p>
           }
           facts={[
@@ -146,15 +170,15 @@ export default function App() {
             ['Injection', '200 µL (Part A uses 50 µL)'],
             ['Run time', EPA_B.runTime],
             ['MDLs', EPA_B.mdlRange],
-            ['Against the MCL', 'Chlorite 1.0 mg/L · bromate 0.010 mg/L'],
+            ['Against the MCL', 'Chlorite 1,000 µg/L · bromate 10 µg/L'],
             ['Spike recovery', EPA_B.recovery],
           ]}
           source={[SOURCES.partB]}
         >
-          <ChartCard cap="Standard chromatogram (STD 3)" sub="approximate, redrawn from Fig. 3">
+          <ChartCard cap="Standard chromatogram (STD 3)" sub="approximate, after Fig. 3" kind="redrawn">
             <DbpChromatogram />
           </ChartCard>
-          <ChartCard cap="Method detection limits" sub="µg/L">
+          <ChartCard cap="Method detection limits" sub="µg/L" kind="replotted">
             <DbpChart />
           </ChartCard>
         </Chapter>
@@ -194,7 +218,7 @@ export default function App() {
               {SUPPRESSION.cationSN.after.toLocaleString('en-US')}, about 30× better.
             </p>
           </div>
-          <ChartCard cap="Standard chromatogram" sub="redrawn from the application note">
+          <ChartCard cap="Standard chromatogram" sub="after the application note" kind="redrawn">
             <CationChromatogram />
           </ChartCard>
         </Chapter>
@@ -224,10 +248,10 @@ export default function App() {
           source={[SOURCES.partA, SOURCES.cations]}
         >
           <div className="chapter__pair">
-            <ChartCard cap="Anion channel" sub="EPA 300.1 Part A data">
+            <ChartCard cap="Anion channel" sub="EPA 300.1 Part A" kind="redrawn">
               <AnionChromatogram />
             </ChartCard>
-            <ChartCard cap="Cation channel" sub="ASTM D6919-17 data">
+            <ChartCard cap="Cation channel" sub="ASTM D6919-17" kind="redrawn">
               <CationChromatogram />
             </ChartCard>
           </div>

@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { buildScene } from '../three/scenes';
-import { stage, stageLabelEls, subscribeStage } from '../utils/stage';
+import { atlasCallout, stage, stageLabelEls, subscribeStage } from '../utils/stage';
+import { IONS } from '../data/apps';
 
 /** Formula / retention labels that the WebGL stage positions over each ion. */
 export function StageLabels() {
   const [v, setV] = useState(0);
   useEffect(() => subscribeStage(() => setV((x) => x + 1)), []);
-  const scene = buildScene(stage.scene, stage.ion);
+  const scene = buildScene(stage.scene, stage.ion, stage.hydrated);
+  const ion = IONS.find((i) => i.id === stage.ion);
   const labels = [
     ...scene.items.filter((i) => i.label).map((i) => ({ t: i.label!, s: i.sub, tag: false })),
     ...(scene.tags ?? []).map((t) => ({ t: t.text, s: t.sub, tag: true })),
@@ -26,6 +28,16 @@ export function StageLabels() {
           </div>
         );
       })}
+      <div className="ion-callout" ref={(el) => (atlasCallout.el = el)} style={{ opacity: 0, ['--c' as string]: ion?.color }}>
+        <span className="ion-callout__dot" />
+        <span className="ion-callout__line" />
+        <span className="ion-callout__box">
+          <span className="ion-callout__t">
+            {ion?.name} · {ion?.formula}
+          </span>
+          <span className="ion-callout__s">Selected ion</span>
+        </span>
+      </div>
     </div>
   );
 }
